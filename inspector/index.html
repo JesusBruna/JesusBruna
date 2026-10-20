@@ -1,0 +1,659 @@
+<title>Inspector de Estaciones</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: herramienta de campo en una columna, con tres pasos (parámetros, fotos, desvíos) y una barra de resumen fija */
+:root {
+  --bg: #f3f5f6;
+  --surface: #ffffff;
+  --surface-2: #e9edf0;
+  --line: #d3dade;
+  --fg: #172227;
+  --muted: #5a6a72;
+  --accent: #0d5c74;
+  --accent-ink: #ffffff;
+  --accent-soft: #d8eaf0;
+  --crit: #b4261c;
+  --crit-soft: #fbe3e0;
+  --major: #a35a00;
+  --major-soft: #fcebd3;
+  --minor: #6b6a1a;
+  --minor-soft: #efefd2;
+  --ok: #1d6b3c;
+  --ok-soft: #dcefe3;
+  --na: #5a6a72;
+  --na-soft: #e6eaec;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11181b; --surface: #182226; --surface-2: #1f2c31; --line: #2d3d43;
+    --fg: #e4ecef; --muted: #93a5ad; --accent: #4fb3d1; --accent-ink: #08262f; --accent-soft: #163a46;
+    --crit: #ff8a7d; --crit-soft: #44201c; --major: #f2b25c; --major-soft: #3d2c14;
+    --minor: #d6d37a; --minor-soft: #33331a; --ok: #6fcf97; --ok-soft: #173525;
+    --na: #93a5ad; --na-soft: #24323a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11181b; --surface: #182226; --surface-2: #1f2c31; --line: #2d3d43;
+  --fg: #e4ecef; --muted: #93a5ad; --accent: #4fb3d1; --accent-ink: #08262f; --accent-soft: #163a46;
+  --crit: #ff8a7d; --crit-soft: #44201c; --major: #f2b25c; --major-soft: #3d2c14;
+  --minor: #d6d37a; --minor-soft: #33331a; --ok: #6fcf97; --ok-soft: #173525;
+  --na: #93a5ad; --na-soft: #24323a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+}
+.wrap {
+  max-width: 980px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 64px;
+  display: grid; gap: 20px;
+}
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
+h1 { font-size: 1.9rem; font-weight: 700; line-height: 1.1; }
+h2 { font-size: 1.3rem; font-weight: 600; }
+h3 { font-size: 1.05rem; font-weight: 600; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--font-mono); font-size: 0.85em; }
+.eyebrow {
+  font-family: var(--font-display); font-weight: 600; font-size: 0.78rem;
+  text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent);
+}
+
+header.top { display: grid; gap: 14px; }
+.meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+label.field { display: grid; gap: 4px; font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+input[type="text"], input[type="date"], select, textarea {
+  font: inherit; font-size: 0.95rem; color: var(--fg); background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; width: 100%; min-width: 0;
+}
+textarea { resize: vertical; min-height: 64px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
+
+.step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.step-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px;
+  padding: 14px 16px; border-bottom: 1px solid var(--line);
+}
+.step-head .title { display: flex; align-items: baseline; gap: 10px; }
+.step-num {
+  font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-ink); background: var(--accent);
+  border-radius: 3px; padding: 1px 6px;
+}
+.step-body { padding: 16px; display: grid; gap: 14px; }
+
+button {
+  font: inherit; font-weight: 600; font-size: 0.9rem; cursor: pointer;
+  border-radius: var(--radius); padding: 8px 14px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--fg);
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button.ghost { background: transparent; border-color: transparent; color: var(--muted); padding: 6px 8px; }
+button.ghost:hover:not(:disabled) { color: var(--crit); border-color: transparent; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Parámetros */
+.sector-group { display: grid; gap: 6px; }
+.sector-group h3 { font-size: 0.95rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.param {
+  display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; align-items: center;
+  padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg);
+}
+.param .pid { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); }
+.param input[type="text"] { border-color: transparent; background: transparent; padding: 4px 6px; }
+.param input[type="text"]:hover { border-color: var(--line); }
+.param select { width: auto; padding: 4px 6px; font-size: 0.85rem; }
+.add-param { display: grid; grid-template-columns: minmax(120px, 0.6fr) 2fr auto auto; gap: 8px; }
+details.bulk summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 0.9rem; }
+details.bulk[open] { display: grid; gap: 8px; }
+
+/* Fotos */
+.drop {
+  border: 2px dashed var(--line); border-radius: var(--radius); padding: 22px 16px;
+  display: grid; gap: 6px; justify-items: center; text-align: center; background: var(--bg);
+}
+.drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.photo { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--bg); display: grid; }
+.photo img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; max-width: 100%; }
+.photo .ph-body { padding: 8px; display: grid; gap: 6px; }
+.photo select { font-size: 0.82rem; padding: 4px 6px; }
+.status { font-size: 0.78rem; font-weight: 600; display: flex; gap: 6px; align-items: center; justify-content: space-between; }
+.status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--na); display: inline-block; }
+.status.analyzing .dot { background: var(--accent); animation: pulse 1s infinite; }
+.status.done .dot { background: var(--ok); }
+.status.error .dot { background: var(--crit); }
+@keyframes pulse { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .status.analyzing .dot { animation: none; } }
+
+/* Resultados */
+.summary { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font-family: var(--font-display); font-weight: 600; font-size: 0.9rem;
+  border-radius: 999px; padding: 3px 12px; display: inline-flex; gap: 6px; align-items: baseline;
+}
+.chip b { font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums; }
+.g-critica { background: var(--crit-soft); color: var(--crit); }
+.g-mayor { background: var(--major-soft); color: var(--major); }
+.g-menor { background: var(--minor-soft); color: var(--minor); }
+.g-cumple { background: var(--ok-soft); color: var(--ok); }
+.g-na { background: var(--na-soft); color: var(--na); }
+
+.finding {
+  display: grid; grid-template-columns: 120px 1fr; gap: 12px;
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; background: var(--bg);
+  border-left-width: 4px;
+}
+.finding.sev-critica { border-left-color: var(--crit); }
+.finding.sev-mayor { border-left-color: var(--major); }
+.finding.sev-menor { border-left-color: var(--minor); }
+.finding.excluded { opacity: 0.5; }
+.finding img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; max-width: 100%; }
+.finding .f-body { display: grid; gap: 6px; min-width: 0; }
+.finding .f-top { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: space-between; }
+.finding .f-param { font-weight: 600; }
+.finding textarea { min-height: 44px; font-size: 0.9rem; }
+.finding .f-row { display: grid; grid-template-columns: auto 1fr; gap: 6px 8px; align-items: start; font-size: 0.85rem; }
+.finding .f-row span { color: var(--muted); padding-top: 8px; }
+.finding select { width: auto; font-size: 0.85rem; padding: 4px 6px; }
+.check { display: inline-flex; gap: 6px; align-items: center; font-size: 0.85rem; font-weight: 500; cursor: pointer; }
+
+details.ok-list { border-top: 1px solid var(--line); padding-top: 10px; }
+details.ok-list summary { cursor: pointer; font-weight: 600; color: var(--muted); }
+.ok-item { display: grid; grid-template-columns: auto 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.88rem; }
+
+.empty { color: var(--muted); padding: 18px; text-align: center; border: 1px dashed var(--line); border-radius: var(--radius); }
+.notice { padding: 10px 12px; border-radius: var(--radius); background: var(--major-soft); color: var(--major); font-size: 0.9rem; }
+.notice.info { background: var(--accent-soft); color: var(--accent); }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  background: var(--fg); color: var(--bg); padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: 0.9rem;
+}
+pre.report {
+  white-space: pre-wrap; font-family: var(--font-mono); font-size: 0.8rem; background: var(--bg);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; margin: 0; max-height: 320px; overflow: auto;
+}
+
+@media (max-width: 560px) {
+  .param { grid-template-columns: 1fr auto auto; }
+  .param .pid { display: none; }
+  .add-param { grid-template-columns: 1fr; }
+  .finding { grid-template-columns: 1fr; }
+  .finding img { aspect-ratio: 16 / 9; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Prototipo · Inspección asistida por IA</div>
+      <h1>Inspector de Estaciones</h1>
+      <p class="muted">Definí los parámetros, cargá las fotos de la recorrida y la IA marca qué cumple y qué hay que corregir. Vos revisás y confirmás cada desvío.</p>
+    </div>
+    <div class="meta">
+      <label class="field">Estación<input type="text" id="m-estacion" placeholder="Ej.: ACA Rafaela"></label>
+      <label class="field">Inspector<input type="text" id="m-inspector" placeholder="Nombre"></label>
+      <label class="field">Fecha<input type="date" id="m-fecha"></label>
+    </div>
+    <div id="cap-notice" class="notice" hidden></div>
+  </header>
+
+  <section class="step" aria-labelledby="s1">
+    <div class="step-head">
+      <div class="title"><span class="step-num">1</span><h2 id="s1">Parámetros de inspección</h2></div>
+      <span class="muted" id="param-count"></span>
+    </div>
+    <div class="step-body">
+      <p class="muted">Cada parámetro tiene que poder verificarse mirando una foto. La gravedad es la que se asigna por defecto si hay desvío. Los cambios se guardan en este navegador.</p>
+      <div id="param-list" style="display:grid;gap:14px"></div>
+      <form class="add-param" id="add-form">
+        <input type="text" id="new-sector" placeholder="Sector" list="sector-options" aria-label="Sector del nuevo parámetro">
+        <input type="text" id="new-text" placeholder="Nuevo parámetro, ej.: Cestos de residuos con bolsa y tapa" aria-label="Texto del nuevo parámetro">
+        <select id="new-sev" aria-label="Gravedad">
+          <option value="critica">Crítica</option><option value="mayor" selected>Mayor</option><option value="menor">Menor</option>
+        </select>
+        <button type="submit" class="primary">Agregar</button>
+      </form>
+      <datalist id="sector-options"></datalist>
+      <details class="bulk">
+        <summary>Pegar un checklist completo</summary>
+        <p class="muted">Una línea por parámetro, con el formato <span class="mono">Sector | Parámetro | gravedad</span>. La gravedad es opcional (crítica, mayor o menor).</p>
+        <textarea id="bulk-text" rows="5" placeholder="Playa | Surtidores sin pérdidas visibles | crítica&#10;Tienda | Heladeras sin escarcha | menor"></textarea>
+        <div class="row">
+          <button type="button" id="bulk-add">Agregar a la lista</button>
+          <button type="button" id="bulk-replace">Reemplazar la lista</button>
+          <button type="button" id="reset-params" class="ghost">Volver a la lista de ejemplo</button>
+        </div>
+      </details>
+      <label class="field">Criterios generales para la IA (opcional)
+        <textarea id="extra" rows="2" placeholder="Ej.: Estándar de imagen YPF. Ser estricto con seguridad; con limpieza tolerar suciedad menor del día."></textarea>
+      </label>
+    </div>
+  </section>
+
+  <section class="step" aria-labelledby="s2">
+    <div class="step-head">
+      <div class="title"><span class="step-num">2</span><h2 id="s2">Fotos de la recorrida</h2></div>
+      <span class="muted" id="photo-count"></span>
+    </div>
+    <div class="step-body">
+      <div class="drop" id="drop">
+        <strong>Arrastrá las fotos acá o elegilas</strong>
+        <span class="muted">JPG, PNG o WebP. Podés indicar el sector de cada foto o dejar que la IA lo detecte.</span>
+        <input type="file" id="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+        <button type="button" id="pick">Elegir fotos</button>
+      </div>
+      <div class="photos" id="photos"></div>
+      <div class="row">
+        <button type="button" class="primary" id="analyze">Analizar fotos</button>
+        <button type="button" id="stop" hidden>Detener</button>
+        <button type="button" class="ghost" id="clear-photos">Quitar todas</button>
+        <span class="muted" id="analyze-msg"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" aria-labelledby="s3">
+    <div class="step-head">
+      <div class="title"><span class="step-num">3</span><h2 id="s3">Desvíos detectados</h2></div>
+      <div class="summary" id="summary"></div>
+    </div>
+    <div class="step-body">
+      <div id="findings" style="display:grid;gap:10px"></div>
+      <details class="ok-list" id="ok-wrap" hidden>
+        <summary id="ok-summary"></summary>
+        <div id="ok-list"></div>
+      </details>
+      <div class="row" id="export-row" hidden>
+        <button type="button" class="primary" id="copy-report">Copiar informe</button>
+        <button type="button" id="dl-csv" hidden>Descargar CSV</button>
+        <button type="button" id="toggle-report">Ver informe</button>
+      </div>
+      <pre class="report" id="report" hidden></pre>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+  const SEV = { critica: "Crítica", mayor: "Mayor", menor: "Menor" };
+  const SEV_ORDER = { critica: 0, mayor: 1, menor: 2 };
+  const DEFAULT_PARAMS = [
+    ["Playa", "Islas y pisos sin manchas de combustible, aceite ni residuos", "mayor"],
+    ["Playa", "Surtidores sin pérdidas visibles, mangueras y picos en buen estado", "critica"],
+    ["Playa", "Pantallas, precios y gráfica de surtidores legibles y completas", "menor"],
+    ["Playa", "Cestos de residuos con bolsa, tapa y sin desbordar", "menor"],
+    ["Seguridad", "Matafuegos presentes, en su soporte, con señalización visible y sin obstrucciones", "critica"],
+    ["Seguridad", "Cartelería de seguridad (no fumar, apagar motor, no usar celular) visible y en buen estado", "mayor"],
+    ["Seguridad", "Salidas de emergencia y pasillos libres de obstáculos", "critica"],
+    ["Tienda", "Góndolas completas, sin huecos ni productos mal ubicados", "mayor"],
+    ["Tienda", "Heladeras limpias, iluminadas y con puertas cerradas", "menor"],
+    ["Tienda", "Precios exhibidos en todos los productos visibles", "mayor"],
+    ["Tienda", "Mostrador y área de café limpios y ordenados", "menor"],
+    ["Sanitarios", "Baños limpios, con papel, jabón y cesto", "mayor"],
+    ["Imagen", "Personal con uniforme completo de la marca", "menor"],
+    ["Imagen", "Fachada, marquesina y tótem limpios, sin roturas ni luces apagadas", "mayor"],
+  ];
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  };
+
+  let params = store.get("insp.params", null) || DEFAULT_PARAMS.map(toParam);
+  let nextId = Math.max(0, ...params.map((p) => Number(p.id.slice(1)) || 0)) + 1;
+  function toParam([sector, texto, gravedad], i) {
+    return { id: "P" + (i + 1), sector, texto, gravedad };
+  }
+  const photos = [];
+  let sample = null, canDownload = null, ctl = null, running = false;
+
+  // --- metadata
+  const meta = store.get("insp.meta", {});
+  $("m-estacion").value = meta.estacion || "";
+  $("m-inspector").value = meta.inspector || "";
+  $("m-fecha").value = new Date().toISOString().slice(0, 10);
+  $("extra").value = store.get("insp.extra", "");
+  ["m-estacion", "m-inspector"].forEach((id) => $(id).addEventListener("input", () => {
+    store.set("insp.meta", { estacion: $("m-estacion").value, inspector: $("m-inspector").value });
+    renderReport();
+  }));
+  $("extra").addEventListener("input", () => store.set("insp.extra", $("extra").value));
+
+  function toast(msg) {
+    const t = $("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toast.h); toast.h = setTimeout(() => (t.hidden = true), 2200);
+  }
+  function el(tag, attrs = {}, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") n.className = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else if (v !== undefined && v !== null && v !== false) n.setAttribute(k, v === true ? "" : v);
+    }
+    for (const k of kids.flat()) if (k != null) n.append(k.nodeType ? k : String(k));
+    return n;
+  }
+  function sevSelect(value, onchange, label) {
+    const s = el("select", { "aria-label": label || "Gravedad", onchange: (e) => onchange(e.target.value) },
+      ...Object.entries(SEV).map(([k, v]) => el("option", { value: k }, v)));
+    s.value = value in SEV ? value : "mayor";
+    return s;
+  }
+  const sectors = () => [...new Set(params.map((p) => p.sector))];
+
+  // --- parámetros
+  function saveParams() { store.set("insp.params", params); renderParams(); renderPhotos(); }
+  function renderParams() {
+    const list = $("param-list"); list.replaceChildren();
+    for (const sector of sectors()) {
+      const g = el("div", { class: "sector-group" }, el("h3", {}, sector));
+      for (const p of params.filter((x) => x.sector === sector)) {
+        const input = el("input", { type: "text", value: p.texto, "aria-label": "Parámetro " + p.id });
+        input.addEventListener("change", () => { p.texto = input.value.trim() || p.texto; store.set("insp.params", params); });
+        g.append(el("div", { class: "param" },
+          el("span", { class: "pid" }, p.id), input,
+          sevSelect(p.gravedad, (v) => { p.gravedad = v; store.set("insp.params", params); }),
+          el("button", { type: "button", class: "ghost", "aria-label": "Quitar " + p.id,
+            onclick: () => { params = params.filter((x) => x !== p); saveParams(); } }, "Quitar")));
+      }
+      list.append(g);
+    }
+    if (!params.length) list.append(el("div", { class: "empty" }, "No hay parámetros. Agregá uno abajo o pegá tu checklist."));
+    $("param-count").textContent = params.length + " parámetros";
+    $("sector-options").replaceChildren(...sectors().map((s) => el("option", { value: s })));
+  }
+  $("add-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const texto = $("new-text").value.trim(); if (!texto) return;
+    params.push({ id: "P" + nextId++, sector: $("new-sector").value.trim() || "General", texto, gravedad: $("new-sev").value });
+    $("new-text").value = ""; saveParams(); toast("Parámetro agregado");
+  });
+  function parseBulk() {
+    const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+    return $("bulk-text").value.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+      const parts = l.split("|").map((x) => x.trim());
+      if (parts.length === 1) return { sector: "General", texto: parts[0], gravedad: "mayor" };
+      const g = norm(parts[2] || "");
+      return { sector: parts[0] || "General", texto: parts[1] || parts[0], gravedad: g in SEV ? g : "mayor" };
+    });
+  }
+  $("bulk-add").onclick = () => {
+    const items = parseBulk(); if (!items.length) return;
+    items.forEach((it) => params.push({ id: "P" + nextId++, ...it }));
+    $("bulk-text").value = ""; saveParams(); toast(items.length + " parámetros agregados");
+  };
+  $("bulk-replace").onclick = () => {
+    const items = parseBulk(); if (!items.length) return;
+    nextId = 1; params = items.map((it) => ({ id: "P" + nextId++, ...it }));
+    $("bulk-text").value = ""; saveParams(); toast("Lista reemplazada");
+  };
+  $("reset-params").onclick = () => {
+    params = DEFAULT_PARAMS.map(toParam); nextId = params.length + 1; saveParams(); toast("Lista de ejemplo restaurada");
+  };
+
+  // --- fotos
+  function addFiles(files) {
+    for (const f of files) {
+      if (!/^image\/(jpeg|png|webp|gif)$/.test(f.type)) continue;
+      photos.push({ id: "F" + (photos.length + 1) + "-" + Date.now().toString(36).slice(-3), n: photos.length + 1,
+        file: f, url: URL.createObjectURL(f), sector: "auto", status: "pending", result: null, error: "" });
+    }
+    renderPhotos();
+  }
+  $("pick").onclick = () => $("file").click();
+  $("file").onchange = (e) => { addFiles(e.target.files); e.target.value = ""; };
+  const drop = $("drop");
+  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); addFiles(e.dataTransfer.files); });
+  $("clear-photos").onclick = () => {
+    if (running) return;
+    photos.splice(0).forEach((p) => URL.revokeObjectURL(p.url)); renderPhotos(); renderResults();
+  };
+
+  const STATUS_TXT = { pending: "Sin analizar", analyzing: "Analizando…", done: "Analizada", error: "Error" };
+  function renderPhotos() {
+    const box = $("photos"); box.replaceChildren();
+    for (const p of photos) {
+      const sel = el("select", { "aria-label": "Sector de la foto " + p.n, onchange: (e) => (p.sector = e.target.value) },
+        el("option", { value: "auto" }, "Sector: detectar"), ...sectors().map((s) => el("option", { value: s }, s)));
+      sel.value = sectors().includes(p.sector) ? p.sector : "auto";
+      const st = el("div", { class: "status " + p.status, title: p.error || "" },
+        el("span", {}, el("span", { class: "dot" }), " ", p.status === "error" ? p.error : STATUS_TXT[p.status]),
+        el("button", { type: "button", class: "ghost", disabled: running, "aria-label": "Quitar foto " + p.n,
+          onclick: () => { URL.revokeObjectURL(p.url); photos.splice(photos.indexOf(p), 1); renderPhotos(); renderResults(); } }, "✕"));
+      box.append(el("div", { class: "photo" },
+        el("img", { src: p.url, alt: "Foto " + p.n }),
+        el("div", { class: "ph-body" }, el("span", { class: "mono muted" }, "Foto " + p.n), sel, st)));
+    }
+    $("photo-count").textContent = photos.length ? photos.length + " fotos" : "";
+    $("analyze").disabled = running || !photos.length || !params.length || !sample;
+  }
+
+  // --- análisis
+  function buildPrompt(p) {
+    const lista = params.map((x) => `${x.id} [${x.sector}] ${x.texto} (gravedad si hay desvío: ${x.gravedad})`).join("\n");
+    const extra = $("extra").value.trim();
+    return `Sos inspector de estaciones de servicio en Argentina. Te paso UNA foto tomada durante la recorrida de la estación "${$("m-estacion").value || "sin nombre"}".
+${p.sector !== "auto" ? `El inspector indicó que la foto es del sector: ${p.sector}.` : "Detectá vos a qué sector corresponde la foto."}
+
+Parámetros de inspección:
+${lista}
+${extra ? `\nCriterios generales del inspector: ${extra}\n` : ""}
+Instrucciones:
+- Evaluá SOLO los parámetros que tengan relación con lo que se ve en la foto. Omití los que no aplican.
+- "desvio" solo si el incumplimiento se ve con claridad. Si el parámetro aplica pero la foto no alcanza para decidir (lejos, borrosa, cortada), usá "no_evaluable" y explicá por qué.
+- Podés ajustar la gravedad si lo que ves es más o menos grave que la indicada.
+- Si ves un desvío claro que no está en la lista, agregalo en "otros_desvios".
+- Escribí en español rioplatense, breve y concreto, describiendo dónde se ve en la foto.
+
+Respondé solo con JSON con esta forma:
+{"sector":"sector de la foto","descripcion":"qué muestra la foto en una frase","evaluaciones":[{"id":"P1","estado":"cumple|desvio|no_evaluable","detalle":"qué se ve","gravedad":"critica|mayor|menor","accion":"acción correctiva si hay desvío"}],"otros_desvios":[{"detalle":"...","gravedad":"critica|mayor|menor","accion":"..."}]}`;
+  }
+
+  async function analyzeOne(p, signal) {
+    p.status = "analyzing"; p.error = ""; renderPhotos();
+    try {
+      const r = await sample.json(buildPrompt(p), { images: [p.file], signal, modelTier: "default" });
+      if (!r || !Array.isArray(r.evaluaciones)) throw { code: "invalid_json" };
+      p.result = r; p.status = "done";
+    } catch (e) {
+      p.status = e?.code === "cancelled" ? "pending" : "error";
+      p.error = ERR[e?.code] || "No se pudo analizar";
+      if (e?.code === "not_granted" || e?.code === "sampling_disabled") { sample = null; showNoSample(); }
+      if (e?.code === "rate_limited") throw e;
+    }
+    renderPhotos(); renderResults();
+  }
+  const ERR = {
+    image_rejected: "Imagen no válida o muy grande",
+    invalid_json: "Respuesta ilegible, reintentá",
+    rate_limited: "Límite de uso, esperá un rato",
+    refused: "La IA no evaluó esta foto",
+    upstream_error: "Falla de conexión, reintentá",
+    empty_completion: "Sin respuesta, reintentá",
+    session_expired: "Iniciá sesión de nuevo",
+    not_granted: "Sin permiso para usar Claude",
+  };
+
+  $("analyze").onclick = async () => {
+    const queue = photos.filter((p) => p.status !== "done");
+    if (!queue.length) { toast("Todas las fotos ya están analizadas"); return; }
+    running = true; ctl = new AbortController();
+    $("stop").hidden = false; $("analyze-msg").textContent = "La primera respuesta puede tardar hasta un minuto.";
+    renderPhotos();
+    let i = 0;
+    const worker = async () => {
+      while (i < queue.length && !ctl.signal.aborted && sample) await analyzeOne(queue[i++], ctl.signal);
+    };
+    try { await Promise.all([worker(), worker()]); }
+    catch (e) { $("analyze-msg").textContent = ERR.rate_limited; }
+    running = false; $("stop").hidden = true;
+    if (!$("analyze-msg").textContent.startsWith("Límite")) $("analyze-msg").textContent = "";
+    renderPhotos(); renderResults();
+  };
+  $("stop").onclick = () => ctl?.abort();
+
+  // --- resultados
+  function allFindings() {
+    const out = [];
+    for (const p of photos) {
+      if (!p.result) continue;
+      const r = p.result;
+      if (!p.findings) {
+        p.findings = [];
+        for (const ev of r.evaluaciones || []) {
+          const par = params.find((x) => x.id === ev.id);
+          p.findings.push({ estado: ev.estado, paramId: ev.id, paramText: par ? par.texto : String(ev.id || "Parámetro"),
+            sector: par ? par.sector : (r.sector || "General"), detalle: ev.detalle || "", accion: ev.accion || "",
+            gravedad: ev.gravedad in SEV ? ev.gravedad : (par?.gravedad || "mayor"), incluir: true });
+        }
+        for (const o of r.otros_desvios || []) {
+          p.findings.push({ estado: "desvio", paramId: "Extra", paramText: "Fuera de checklist",
+            sector: r.sector || "General", detalle: o.detalle || "", accion: o.accion || "",
+            gravedad: o.gravedad in SEV ? o.gravedad : "menor", incluir: true });
+        }
+      }
+      for (const f of p.findings) out.push({ ...f, ref: f, photo: p });
+    }
+    return out;
+  }
+
+  function renderResults() {
+    const all = allFindings();
+    const desv = all.filter((f) => f.estado === "desvio")
+      .sort((a, b) => SEV_ORDER[a.gravedad] - SEV_ORDER[b.gravedad] || a.photo.n - b.photo.n);
+    const rest = all.filter((f) => f.estado !== "desvio");
+    const box = $("findings"); box.replaceChildren();
+
+    const counts = { critica: 0, mayor: 0, menor: 0 };
+    desv.filter((f) => f.ref.incluir).forEach((f) => counts[f.ref.gravedad]++);
+    const sum = $("summary"); sum.replaceChildren();
+    if (all.length) {
+      for (const k of Object.keys(SEV)) sum.append(el("span", { class: "chip g-" + k }, SEV[k], el("b", {}, counts[k])));
+      sum.append(el("span", { class: "chip g-cumple" }, "Cumple", el("b", {}, rest.filter((f) => f.estado === "cumple").length)));
+    }
+
+    if (!photos.some((p) => p.result)) {
+      box.append(el("div", { class: "empty" }, photos.length
+        ? "Tocá «Analizar fotos» para que la IA revise cada imagen contra tus parámetros."
+        : "Cuando cargues y analices las fotos, acá aparece cada desvío con su foto, gravedad y acción correctiva para que lo revises."));
+    } else if (!desv.length) {
+      box.append(el("div", { class: "empty" }, "No se detectaron desvíos en las fotos analizadas."));
+    }
+    for (const f of desv) {
+      const ref = f.ref;
+      const card = el("article", { class: "finding sev-" + ref.gravedad + (ref.incluir ? "" : " excluded") });
+      const det = el("textarea", { "aria-label": "Detalle del desvío" }); det.value = ref.detalle;
+      det.addEventListener("input", () => { ref.detalle = det.value; renderReport(); });
+      const acc = el("textarea", { "aria-label": "Acción correctiva" }); acc.value = ref.accion;
+      acc.addEventListener("input", () => { ref.accion = acc.value; renderReport(); });
+      const chk = el("input", { type: "checkbox" }); chk.checked = ref.incluir;
+      chk.onchange = () => { ref.incluir = chk.checked; renderResults(); };
+      card.append(
+        el("img", { src: f.photo.url, alt: "Foto " + f.photo.n }),
+        el("div", { class: "f-body" },
+          el("div", { class: "f-top" },
+            el("div", {}, el("span", { class: "mono muted" }, `${ref.paramId} · ${ref.sector} · Foto ${f.photo.n}`),
+              el("div", { class: "f-param" }, ref.paramText)),
+            el("div", { class: "row" },
+              sevSelect(ref.gravedad, (v) => { ref.gravedad = v; renderResults(); }),
+              el("label", { class: "check" }, chk, "Incluir"))),
+          el("div", { class: "f-row" }, el("span", {}, "Desvío"), det, el("span", {}, "Acción"), acc)));
+      box.append(card);
+    }
+
+    const okWrap = $("ok-wrap");
+    okWrap.hidden = !rest.length;
+    $("ok-summary").textContent = `Puntos que cumplen o no se pudieron evaluar (${rest.length})`;
+    $("ok-list").replaceChildren(...rest.map((f) => el("div", { class: "ok-item" },
+      el("span", { class: "chip " + (f.estado === "cumple" ? "g-cumple" : "g-na") }, f.estado === "cumple" ? "Cumple" : "No evaluable"),
+      el("div", {}, el("strong", {}, f.ref.paramText), " ", el("span", { class: "muted" }, `(Foto ${f.photo.n}) ${f.ref.detalle}`)))));
+
+    $("export-row").hidden = !desv.length;
+    renderReport();
+  }
+
+  function included() {
+    return allFindings().filter((f) => f.estado === "desvio" && f.ref.incluir)
+      .sort((a, b) => a.ref.sector.localeCompare(b.ref.sector) || SEV_ORDER[a.ref.gravedad] - SEV_ORDER[b.ref.gravedad]);
+  }
+  function reportText() {
+    const list = included();
+    const lines = [`INFORME DE INSPECCIÓN — ${$("m-estacion").value || "Estación"}`,
+      `Fecha: ${$("m-fecha").value}${$("m-inspector").value ? "  ·  Inspector: " + $("m-inspector").value : ""}`,
+      `Fotos analizadas: ${photos.filter((p) => p.result).length}  ·  Desvíos: ${list.length}`, ""];
+    let sec = null;
+    list.forEach((f) => {
+      if (f.ref.sector !== sec) { sec = f.ref.sector; lines.push(sec.toUpperCase()); }
+      lines.push(`- [${SEV[f.ref.gravedad]}] ${f.ref.paramText} (foto ${f.photo.n})`);
+      if (f.ref.detalle) lines.push(`  Desvío: ${f.ref.detalle}`);
+      if (f.ref.accion) lines.push(`  Acción: ${f.ref.accion}`);
+    });
+    return lines.join("\n");
+  }
+  function renderReport() { if (!$("report").hidden) $("report").textContent = reportText(); }
+  $("toggle-report").onclick = () => {
+    const r = $("report"); r.hidden = !r.hidden; $("toggle-report").textContent = r.hidden ? "Ver informe" : "Ocultar informe"; renderReport();
+  };
+  $("copy-report").onclick = async () => {
+    const txt = reportText();
+    try { await navigator.clipboard.writeText(txt); toast("Informe copiado"); }
+    catch {
+      const r = $("report"); r.hidden = false; r.textContent = txt; $("toggle-report").textContent = "Ocultar informe";
+      const range = document.createRange(); range.selectNodeContents(r);
+      const s = getSelection(); s.removeAllRanges(); s.addRange(range);
+      toast("Texto seleccionado: copialo con Ctrl+C");
+    }
+  };
+  $("dl-csv").onclick = async () => {
+    const q = (s) => '"' + String(s ?? "").replace(/"/g, '""') + '"';
+    const rows = [["Estación", "Fecha", "Sector", "Parámetro", "Gravedad", "Desvío", "Acción correctiva", "Foto", "Archivo"]];
+    included().forEach((f) => rows.push([$("m-estacion").value, $("m-fecha").value, f.ref.sector, f.ref.paramText,
+      SEV[f.ref.gravedad], f.ref.detalle, f.ref.accion, f.photo.n, f.photo.file.name]));
+    const csv = "﻿" + rows.map((r) => r.map(q).join(";")).join("\r\n");
+    const name = `inspeccion-${($("m-estacion").value || "estacion").toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${$("m-fecha").value}.csv`;
+    try { await canDownload.save({ filename: name, data: new Blob([csv], { type: "text/csv" }) }); }
+    catch { toast("No se descargó el archivo"); }
+  };
+
+  function showNoSample() {
+    const n = $("cap-notice");
+    n.hidden = false;
+    n.textContent = "El análisis con IA no está disponible en esta vista. Abrí la página en claude.ai con tu cuenta y aceptá el permiso para usar Claude.";
+    renderPhotos();
+  }
+
+  renderParams(); renderPhotos(); renderResults();
+
+  (async () => {
+    if (!window.claude?.use) { showNoSample(); return; }
+    const [s, d] = await Promise.all([claude.use("sample"), claude.use("downloads")]);
+    canDownload = d; $("dl-csv").hidden = !d;
+    if (!s) { showNoSample(); return; }
+    const lim = await s.limits().catch(() => null);
+    if (!lim?.images) { showNoSample(); return; }
+    sample = s; renderPhotos();
+  })();
+})();
+</script>
