@@ -27,7 +27,7 @@ def celda(formula):
     return '=' + re.sub(r'\[@\[?([^\[\]]+)\]?\]', r'Tareas[[#This Row],[\1]]', formula)
 
 
-def armar(salida, email, hoy=dt.date.today()):
+def armar(salida, email, hoy=dt.date.today(), filas=None):
     d = lambda n: hoy + dt.timedelta(days=n)
     azul = PatternFill('solid', fgColor='1F4E79')
     wb = Workbook()
@@ -35,13 +35,14 @@ def armar(salida, email, hoy=dt.date.today()):
     t = wb.active
     t.title = 'Tareas'
     t.append(COLS)
-    filas = [
+    filas = filas or [
         (celda(F_NRO), hoy, 'PRUEBA – Relevamiento estación X', 'Relevamiento', 'Ana', d(-1), None, 'Pendiente', 'Venció ayer'),
         (celda(F_NRO), hoy, 'PRUEBA – Auditoría interna', 'Auditoría', 'Luis', d(0), None, 'En curso', 'Vence hoy'),
         (celda(F_NRO), hoy, 'PRUEBA – Actualizar procedimiento', 'Documento', 'Jesús', d(2), None, 'Pendiente', 'Por vencer'),
         (celda(F_NRO), hoy, 'PRUEBA – Capacitación anual', 'Capacitación', 'Equipo', d(31), 7, 'Pendiente', 'Más adelante'),
         (celda(F_NRO), hoy, 'PRUEBA – Revisar indicadores', 'Indicador', '', None, None, 'Pendiente', 'Sin fecha'),
     ]
+    filas = [(celda(F_NRO),) + tuple(f[1:]) for f in filas]
     for f in filas:
         t.append(list(f) + [celda(F_DIAS), celda(F_ALERTA), None])
     ult = len(filas) + 1
