@@ -15,7 +15,8 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.table import Table, TableFormula, TableStyleInfo
 
 TIPOS = 'Relevamiento,Auditoría,Capacitación,Reunión,Documento,Indicador,Recordatorio,Otro'
-COLS = ['Nro', 'Cargado', 'Tarea', 'Tipo', 'Responsable', 'Vence', 'Avisar días antes', 'Estado', 'Notas', 'Días', 'Alerta']
+COLS = ['Nro', 'Cargado', 'Tarea', 'Tipo', 'Responsable', 'Vence', 'Avisar días antes', 'Estado', 'Notas', 'Días', 'Alerta', 'Calendario']
+F_NRO = 'ROW()-ROW(Tareas[#Headers])'
 F_DIAS = 'IF([@Vence]="","",[@Vence]-TODAY())'
 F_ALERTA = ('IF(OR([@Estado]="Hecho",[@Vence]=""),"",IF([@Días]<0,"🔴 VENCIDA",IF([@Días]=0,"🟠 VENCE HOY",'
             'IF([@Días]<=IF([@[Avisar días antes]]="",3,[@[Avisar días antes]]),"🟡 POR VENCER",""))))')
@@ -35,25 +36,26 @@ def armar(salida, email, hoy=dt.date.today()):
     t.title = 'Tareas'
     t.append(COLS)
     filas = [
-        (1, hoy, 'PRUEBA – Relevamiento estación X', 'Relevamiento', 'Ana', d(-1), None, 'Pendiente', 'Venció ayer'),
-        (2, hoy, 'PRUEBA – Auditoría interna', 'Auditoría', 'Luis', d(0), None, 'En curso', 'Vence hoy'),
-        (3, hoy, 'PRUEBA – Actualizar procedimiento', 'Documento', 'Jesús', d(2), None, 'Pendiente', 'Por vencer'),
-        (4, hoy, 'PRUEBA – Capacitación anual', 'Capacitación', 'Equipo', d(31), 7, 'Pendiente', 'Más adelante'),
-        (5, hoy, 'PRUEBA – Revisar indicadores', 'Indicador', '', None, None, 'Pendiente', 'Sin fecha'),
+        (celda(F_NRO), hoy, 'PRUEBA – Relevamiento estación X', 'Relevamiento', 'Ana', d(-1), None, 'Pendiente', 'Venció ayer'),
+        (celda(F_NRO), hoy, 'PRUEBA – Auditoría interna', 'Auditoría', 'Luis', d(0), None, 'En curso', 'Vence hoy'),
+        (celda(F_NRO), hoy, 'PRUEBA – Actualizar procedimiento', 'Documento', 'Jesús', d(2), None, 'Pendiente', 'Por vencer'),
+        (celda(F_NRO), hoy, 'PRUEBA – Capacitación anual', 'Capacitación', 'Equipo', d(31), 7, 'Pendiente', 'Más adelante'),
+        (celda(F_NRO), hoy, 'PRUEBA – Revisar indicadores', 'Indicador', '', None, None, 'Pendiente', 'Sin fecha'),
     ]
     for f in filas:
-        t.append(list(f) + [celda(F_DIAS), celda(F_ALERTA)])
+        t.append(list(f) + [celda(F_DIAS), celda(F_ALERTA), None])
     ult = len(filas) + 1
     for r in range(2, ult + 1):
         t.cell(r, 2).number_format = 'DD/MM/YYYY'
         t.cell(r, 6).number_format = 'DD/MM/YYYY'
         t.cell(r, 10).number_format = '0'
 
-    tabla = Table(displayName='Tareas', ref=f'A1:K{ult}')
+    tabla = Table(displayName='Tareas', ref=f'A1:L{ult}')
     tabla.tableStyleInfo = TableStyleInfo(name='TableStyleMedium2', showRowStripes=True)
     tabla._initialise_columns()
     for col, nombre in zip(tabla.tableColumns, COLS):
         col.name = nombre
+    tabla.tableColumns[0].calculatedColumnFormula = TableFormula(attr_text=F_NRO)
     tabla.tableColumns[9].calculatedColumnFormula = TableFormula(attr_text=celda(F_DIAS)[1:])
     tabla.tableColumns[10].calculatedColumnFormula = TableFormula(attr_text=celda(F_ALERTA)[1:])
     t.add_table(tabla)
@@ -61,11 +63,11 @@ def armar(salida, email, hoy=dt.date.today()):
         dv = DataValidation(type='list', formula1=f'"{lista}"', allow_blank=True)
         t.add_data_validation(dv)
         dv.add(f'{col}2:{col}1000')
-    rng = 'A2:K1000'
+    rng = 'A2:L1000'
     t.conditional_formatting.add(rng, FormulaRule(formula=['$H2="Hecho"'], font=Font(color='999999', strike=True), stopIfTrue=True))
     t.conditional_formatting.add(rng, FormulaRule(formula=['AND($F2<>"",$F2<TODAY())'], fill=PatternFill('solid', bgColor='F8D7DA'), stopIfTrue=True))
     t.conditional_formatting.add(rng, FormulaRule(formula=['$K2<>""'], fill=PatternFill('solid', bgColor='FFF3CD')))
-    for i, w in enumerate([6, 12, 42, 14, 16, 12, 10, 11, 34, 7, 15]):
+    for i, w in enumerate([6, 12, 42, 14, 16, 12, 10, 11, 34, 7, 15, 11]):
         t.column_dimensions[chr(65 + i)].width = w
     t.freeze_panes = 'A2'
 
@@ -83,7 +85,8 @@ def armar(salida, email, hoy=dt.date.today()):
     for p in ['CÓMO USAR EL ANOTADOR', '',
               '• Cargar una tarea: escribir en la primera fila vacía debajo de la tabla (la tabla se agranda sola).',
               '• Completar: Tarea, Tipo, Responsable, Vence y, si se quiere, Avisar días antes (vacío = 3 días).',
-              '• Días y Alerta se calculan solos. No escribir en esas columnas.',
+              '• Nro, Días y Alerta se calculan solos. No escribir en esas columnas.',
+              '• Calendario la completa el flujo con "Sí" cuando crea el evento en el calendario del equipo.',
               '• Al terminar algo, poner Estado = Hecho: deja de avisarse y queda tachado.',
               '• Los avisos por mail los manda el flujo de Power Automate todos los días a las 8 hs.',
               '', 'La hoja Equipo es solo de referencia: los mails a los que se avisa se cargan en el flujo.']:
