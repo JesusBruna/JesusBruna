@@ -64,6 +64,20 @@ def armar(salida, email, hoy=dt.date.today(), filas=None):
         dv = DataValidation(type='list', formula1=f'"{lista}"', allow_blank=True)
         t.add_data_validation(dv)
         dv.add(f'{col}2:{col}1000')
+    # Columnas automáticas: grises y con validación que impide escribir a mano.
+    # (La protección de hoja no sirve: impide que la tabla crezca y que el flujo escriba "Calendario".)
+    gris = PatternFill('solid', fgColor='E7E6E6')
+    gris_titulo = PatternFill('solid', fgColor='7F7F7F')
+    for col in 'AJKL':
+        t[f'{col}1'].fill = gris_titulo
+        t[f'{col}1'].font = Font(bold=True, color='FFFFFF')
+        for r in range(2, ult + 1):  # la tabla copia el formato a las filas nuevas
+            t[f'{col}{r}'].fill = gris
+        bloqueo = DataValidation(type='custom', formula1='FALSE', showErrorMessage=True, showInputMessage=True,
+                                 errorTitle='Columna automática', error='Esta columna se completa sola: no escribir acá.',
+                                 promptTitle='Automático', prompt='Se completa sola.')
+        t.add_data_validation(bloqueo)
+        bloqueo.add(f'{col}2:{col}1000')
     rng = 'A2:L1000'
     t.conditional_formatting.add(rng, FormulaRule(formula=['$H2="Hecho"'], font=Font(color='999999', strike=True), stopIfTrue=True))
     t.conditional_formatting.add(rng, FormulaRule(formula=['AND($F2<>"",$F2<TODAY())'], fill=PatternFill('solid', bgColor='F8D7DA'), stopIfTrue=True))
@@ -86,7 +100,8 @@ def armar(salida, email, hoy=dt.date.today(), filas=None):
     for p in ['CÓMO USAR EL ANOTADOR', '',
               '• Cargar una tarea: escribir en la primera fila vacía debajo de la tabla (la tabla se agranda sola).',
               '• Completar: Tarea, Tipo, Responsable, Vence y, si se quiere, Avisar días antes (vacío = 7 días).',
-              '• Nro, Días y Alerta se calculan solos. No escribir en esas columnas.',
+              '• Las columnas grises (Nro, Días, Alerta y Calendario) son automáticas: Excel no deja escribir en ellas.',
+              '• Para borrar una tarea: clic derecho en la fila → Eliminar → Filas de tabla (no usar la tecla Supr).',
               '• Calendario la completa el flujo con "Sí" cuando crea el evento en el calendario del equipo.',
               '• Al terminar algo, poner Estado = Hecho: deja de avisarse y queda tachado.',
               '• Los avisos por mail los manda el flujo de Power Automate todos los lunes a las 8 hs.',
