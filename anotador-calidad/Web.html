@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, Roboto, Arial, sans-serif; margin: 0; background: #f4f6f9; color: #222; }
+    header { background: #1f4e79; color: #fff; padding: 14px 16px; position: sticky; top: 0; }
+    header h1 { font-size: 18px; margin: 0; }
+    header small { opacity: .8; }
+    main { padding: 12px 16px 90px; max-width: 700px; margin: auto; }
+    h2 { font-size: 15px; margin: 18px 0 8px; }
+    .tarea { border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+    .tarea b { display: block; font-size: 15px; }
+    .meta { font-size: 13px; color: #444; margin-top: 3px; }
+    .notas { font-size: 13px; color: #666; margin-top: 4px; }
+    .acciones { margin-top: 6px; }
+    .acciones button { font-size: 12px; padding: 4px 10px; border: 1px solid #999; background: #fff; border-radius: 14px; }
+    .vacio { text-align: center; color: #666; margin-top: 40px; }
+    #btnNueva { position: fixed; right: 16px; bottom: 16px; background: #25d366; color: #fff; border: 0;
+                border-radius: 28px; padding: 14px 20px; font-size: 16px; font-weight: bold; box-shadow: 0 2px 8px #0004; }
+    #form { display: none; background: #fff; border-radius: 10px; padding: 14px; margin-top: 12px; }
+    #form label { display: block; font-size: 13px; margin-top: 10px; color: #444; }
+    #form input, #form select, #form textarea { width: 100%; padding: 9px; font-size: 15px; border: 1px solid #ccc; border-radius: 6px; }
+    #form .fila { display: flex; gap: 10px; } #form .fila > div { flex: 1; }
+    #form button[type=submit] { margin-top: 14px; width: 100%; padding: 12px; font-size: 16px; background: #1f4e79; color: #fff; border: 0; border-radius: 8px; }
+    #msg { padding: 10px; border-radius: 8px; margin-top: 10px; display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📋 Anotador – <span id="equipo"></span></h1>
+    <small id="hoy">Cargando…</small>
+  </header>
+  <main>
+    <div id="msg"></div>
+    <form id="form" onsubmit="guardar(event)">
+      <strong>Nueva tarea / recordatorio</strong>
+      <label>Tema / tarea *</label><input name="tarea" required placeholder="Ej: Relevamiento de stock en estación Rafaela">
+      <div class="fila">
+        <div><label>Tipo</label><select name="tipo" id="tipo"><option></option></select></div>
+        <div><label>Responsable</label><input name="responsable"></div>
+      </div>
+      <div class="fila">
+        <div><label>Vence</label><input type="date" name="vence"></div>
+        <div><label>Avisar días antes</label><input type="number" name="aviso" min="0" max="90" placeholder="3"></div>
+      </div>
+      <label>Notas</label><textarea name="notas" rows="2"></textarea>
+      <label>Clave de carga *</label><input type="password" name="clave" id="clave" required>
+      <button type="submit">Guardar</button>
+    </form>
+    <div id="lista"></div>
+  </main>
+  <button id="btnNueva" onclick="mostrarForm()">＋ Cargar</button>
+
+  <script>
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    let clave = '';
+    try { clave = sessionStorage.getItem('clave') || ''; } catch (e) {}
+
+    function render(d) {
+      document.getElementById('equipo').textContent = d.equipo;
+      document.getElementById('hoy').textContent = 'Actualizado ' + d.hoy;
+      const tipo = document.getElementById('tipo');
+      if (tipo.options.length === 1) d.tipos.forEach(t => tipo.add(new Option(t, t)));
+      const lista = document.getElementById('lista');
+      if (!d.grupos.length) { lista.innerHTML = '<p class="vacio">✅ No hay tareas pendientes.</p>'; return; }
+      lista.innerHTML = d.grupos.map(g => `<h2>${g.titulo} (${g.tareas.length})</h2>` + g.tareas.map(t => `
+        <div class="tarea" style="background:${g.color}">
+          <b>${esc(t.tarea)}</b>
+          <div class="meta">${[t.tipo, t.responsable, t.vence && (t.vence + ' · ' + t.cuando),
+                               t.estado === 'En curso' && '⏳ En curso'].filter(Boolean).map(esc).join(' · ')}</div>
+          ${t.notas ? `<div class="notas">${esc(t.notas)}</div>` : ''}
+          <div class="acciones">
+            ${t.estado !== 'En curso' ? `<button onclick="estado(${t.id},'En curso')">⏳ En curso</button>` : ''}
+            <button onclick="estado(${t.id},'Hecho')">✅ Hecho</button>
+          </div>
+        </div>`).join('')).join('');
+    }
+
+    function aviso(texto, ok) {
+      const m = document.getElementById('msg');
+      m.style.display = 'block';
+      m.style.background = ok ? '#d4edda' : '#f8d7da';
+      m.textContent = texto;
+      setTimeout(() => m.style.display = 'none', 4000);
+    }
+
+    function error(e) { aviso('⚠️ ' + (e && e.message ? e.message : e), false); }
+
+    function recordarClave(c) { clave = c; try { sessionStorage.setItem('clave', c); } catch (e) {} }
+
+    function mostrarForm() {
+      const f = document.getElementById('form');
+      f.style.display = f.style.display === 'block' ? 'none' : 'block';
+      document.getElementById('clave').value = clave;
+      window.scrollTo(0, 0);
+    }
+
+    function guardar(ev) {
+      ev.preventDefault();
+      const f = ev.target;
+      const datos = Object.fromEntries(new FormData(f));
+      recordarClave(datos.clave);
+      google.script.run.withSuccessHandler(d => {
+        render(d); f.reset(); f.style.display = 'none'; aviso('✅ Tarea guardada', true);
+      }).withFailureHandler(error).agregarTarea(datos);
+    }
+
+    function estado(id, nuevo) {
+      if (!clave) { const c = prompt('Clave de carga'); if (!c) return; recordarClave(c); }
+      google.script.run.withSuccessHandler(d => { render(d); aviso('✅ Actualizado', true); })
+        .withFailureHandler(e => { recordarClave(''); error(e); }).cambiarEstado(id, nuevo, clave);
+    }
+
+    google.script.run.withSuccessHandler(render).withFailureHandler(error).datosWeb();
+  </script>
+</body>
+</html>
