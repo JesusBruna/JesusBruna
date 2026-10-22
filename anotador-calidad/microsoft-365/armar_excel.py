@@ -19,7 +19,7 @@ COLS = ['Nro', 'Cargado', 'Tarea', 'Tipo', 'Responsable', 'Vence', 'Avisar días
 F_NRO = 'ROW()-ROW(Tareas[#Headers])'
 F_DIAS = 'IF([@Vence]="","",[@Vence]-TODAY())'
 F_ALERTA = ('IF(OR([@Estado]="Hecho",[@Vence]=""),"",IF([@Días]<0,"🔴 VENCIDA",IF([@Días]=0,"🟠 VENCE HOY",'
-            'IF([@Días]<=IF([@[Avisar días antes]]="",3,[@[Avisar días antes]]),"🟡 POR VENCER",""))))')
+            'IF([@Días]<=IF([@[Avisar días antes]]="",7,[@[Avisar días antes]]),"🟡 POR VENCER",""))))')
 
 
 def celda(formula):
@@ -84,11 +84,11 @@ def armar(salida, email, hoy=dt.date.today()):
     g.column_dimensions['A'].width = 110
     for p in ['CÓMO USAR EL ANOTADOR', '',
               '• Cargar una tarea: escribir en la primera fila vacía debajo de la tabla (la tabla se agranda sola).',
-              '• Completar: Tarea, Tipo, Responsable, Vence y, si se quiere, Avisar días antes (vacío = 3 días).',
+              '• Completar: Tarea, Tipo, Responsable, Vence y, si se quiere, Avisar días antes (vacío = 7 días).',
               '• Nro, Días y Alerta se calculan solos. No escribir en esas columnas.',
               '• Calendario la completa el flujo con "Sí" cuando crea el evento en el calendario del equipo.',
               '• Al terminar algo, poner Estado = Hecho: deja de avisarse y queda tachado.',
-              '• Los avisos por mail los manda el flujo de Power Automate todos los días a las 8 hs.',
+              '• Los avisos por mail los manda el flujo de Power Automate todos los lunes a las 8 hs.',
               '', 'La hoja Equipo es solo de referencia: los mails a los que se avisa se cargan en el flujo.']:
         g.append([p])
     g['A1'].font = Font(bold=True, size=13, color='1F4E79')
