@@ -1,0 +1,96 @@
+"""Genera "Anotador Gestión de Calidad.xlsx" para OneDrive / Microsoft 365.
+
+La hoja Tareas es una Tabla de Excel llamada "Tareas" (la que lee Power Automate).
+Las columnas Días y Alerta se calculan solas; el flujo avisa las filas con Alerta.
+Uso: python3 armar_excel.py salida.xlsx [email-de-prueba]
+"""
+import datetime as dt
+import re
+import sys
+
+from openpyxl import Workbook
+from openpyxl.formatting.rule import FormulaRule
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.worksheet.table import Table, TableFormula, TableStyleInfo
+
+TIPOS = 'Relevamiento,Auditoría,Capacitación,Reunión,Documento,Indicador,Recordatorio,Otro'
+COLS = ['Nro', 'Cargado', 'Tarea', 'Tipo', 'Responsable', 'Vence', 'Avisar días antes', 'Estado', 'Notas', 'Días', 'Alerta']
+F_DIAS = 'IF([@Vence]="","",[@Vence]-TODAY())'
+F_ALERTA = ('IF(OR([@Estado]="Hecho",[@Vence]=""),"",IF([@Días]<0,"🔴 VENCIDA",IF([@Días]=0,"🟠 VENCE HOY",'
+            'IF([@Días]<=IF([@[Avisar días antes]]="",3,[@[Avisar días antes]]),"🟡 POR VENCER",""))))')
+
+
+def celda(formula):
+    # En el XML de las celdas, [@Col] y [@[Col]] se guardan como Tareas[[#This Row],[Col]].
+    return '=' + re.sub(r'\[@\[?([^\[\]]+)\]?\]', r'Tareas[[#This Row],[\1]]', formula)
+
+
+def armar(salida, email, hoy=dt.date.today()):
+    d = lambda n: hoy + dt.timedelta(days=n)
+    azul = PatternFill('solid', fgColor='1F4E79')
+    wb = Workbook()
+
+    t = wb.active
+    t.title = 'Tareas'
+    t.append(COLS)
+    filas = [
+        (1, hoy, 'PRUEBA – Relevamiento estación X', 'Relevamiento', 'Ana', d(-1), None, 'Pendiente', 'Venció ayer'),
+        (2, hoy, 'PRUEBA – Auditoría interna', 'Auditoría', 'Luis', d(0), None, 'En curso', 'Vence hoy'),
+        (3, hoy, 'PRUEBA – Actualizar procedimiento', 'Documento', 'Jesús', d(2), None, 'Pendiente', 'Por vencer'),
+        (4, hoy, 'PRUEBA – Capacitación anual', 'Capacitación', 'Equipo', d(31), 7, 'Pendiente', 'Más adelante'),
+        (5, hoy, 'PRUEBA – Revisar indicadores', 'Indicador', '', None, None, 'Pendiente', 'Sin fecha'),
+    ]
+    for f in filas:
+        t.append(list(f) + [celda(F_DIAS), celda(F_ALERTA)])
+    ult = len(filas) + 1
+    for r in range(2, ult + 1):
+        t.cell(r, 2).number_format = 'DD/MM/YYYY'
+        t.cell(r, 6).number_format = 'DD/MM/YYYY'
+        t.cell(r, 10).number_format = '0'
+
+    tabla = Table(displayName='Tareas', ref=f'A1:K{ult}')
+    tabla.tableStyleInfo = TableStyleInfo(name='TableStyleMedium2', showRowStripes=True)
+    tabla._initialise_columns()
+    for col, nombre in zip(tabla.tableColumns, COLS):
+        col.name = nombre
+    tabla.tableColumns[9].calculatedColumnFormula = TableFormula(attr_text=celda(F_DIAS)[1:])
+    tabla.tableColumns[10].calculatedColumnFormula = TableFormula(attr_text=celda(F_ALERTA)[1:])
+    t.add_table(tabla)
+    for col, lista in (('D', TIPOS), ('H', 'Pendiente,En curso,Hecho')):
+        dv = DataValidation(type='list', formula1=f'"{lista}"', allow_blank=True)
+        t.add_data_validation(dv)
+        dv.add(f'{col}2:{col}1000')
+    rng = 'A2:K1000'
+    t.conditional_formatting.add(rng, FormulaRule(formula=['$H2="Hecho"'], font=Font(color='999999', strike=True), stopIfTrue=True))
+    t.conditional_formatting.add(rng, FormulaRule(formula=['AND($F2<>"",$F2<TODAY())'], fill=PatternFill('solid', bgColor='F8D7DA'), stopIfTrue=True))
+    t.conditional_formatting.add(rng, FormulaRule(formula=['$K2<>""'], fill=PatternFill('solid', bgColor='FFF3CD')))
+    for i, w in enumerate([6, 12, 42, 14, 16, 12, 10, 11, 34, 7, 15]):
+        t.column_dimensions[chr(65 + i)].width = w
+    t.freeze_panes = 'A2'
+
+    e = wb.create_sheet('Equipo')
+    e.append(['Nombre', 'Email'])
+    e.append(['Jesús (prueba)', email])
+    for c in e[1]:
+        c.font = Font(bold=True, color='FFFFFF')
+        c.fill = azul
+    e.column_dimensions['A'].width = 24
+    e.column_dimensions['B'].width = 34
+
+    g = wb.create_sheet('Cómo usar')
+    g.column_dimensions['A'].width = 110
+    for p in ['CÓMO USAR EL ANOTADOR', '',
+              '• Cargar una tarea: escribir en la primera fila vacía debajo de la tabla (la tabla se agranda sola).',
+              '• Completar: Tarea, Tipo, Responsable, Vence y, si se quiere, Avisar días antes (vacío = 3 días).',
+              '• Días y Alerta se calculan solos. No escribir en esas columnas.',
+              '• Al terminar algo, poner Estado = Hecho: deja de avisarse y queda tachado.',
+              '• Los avisos por mail los manda el flujo de Power Automate todos los días a las 8 hs.',
+              '', 'La hoja Equipo es solo de referencia: los mails a los que se avisa se cargan en el flujo.']:
+        g.append([p])
+    g['A1'].font = Font(bold=True, size=13, color='1F4E79')
+    wb.save(salida)
+
+
+if __name__ == '__main__':
+    armar(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else '')
