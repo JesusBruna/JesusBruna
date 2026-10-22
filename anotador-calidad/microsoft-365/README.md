@@ -20,7 +20,9 @@ Usa la cuenta del trabajo (`@aca.org.ar`):
 
 ## 1. El Excel
 
-Archivo: **OneDrive → Anotador Gestión de Calidad.xlsx**.
+Archivo: equipo de Teams **GO.Gestion de Calidad → canal General → Archivos → Anotador Gestión de Calidad.xlsx**
+(sitio de SharePoint `https://acacloud.sharepoint.com/sites/GOGestiondeCalidad`, carpeta `Documentos compartidos/General`).
+Todos los miembros del equipo ya lo pueden ver y editar sin compartir nada.
 
 - Cargar tareas en la primera fila vacía **justo debajo de la tabla**. La tabla se agranda sola y copia las fórmulas.
 - **No escribir en Días ni en Alerta.**
@@ -28,8 +30,7 @@ Archivo: **OneDrive → Anotador Gestión de Calidad.xlsx**.
 - Estado **Hecho** → deja de avisarse y queda tachado.
 - Borrar las filas que dicen **PRUEBA** cuando todo funcione.
 
-**Compartirlo con el equipo:** botón **Compartir** → mails del equipo → *Puede ver* (o *Puede editar* solo para la persona encargada).
-Si usan Teams: en el chat o canal del equipo, **＋ (agregar pestaña) → Excel → elegir el archivo**. Así queda siempre a mano.
+**Tenerlo a mano en Teams:** en el canal General, **＋ (agregar pestaña) → Excel → elegir el archivo**.
 
 ---
 
@@ -44,8 +45,9 @@ Entrar a **https://make.powerautomate.com** con la cuenta `@aca.org.ar`.
 - En el paso *Recurrence*, abrir los parámetros: **Zona horaria** = *(UTC-03:00) Buenos Aires*, **En estas horas** = `8`.
 
 **＋ Paso 2 – Excel Online (Business) → "Enumerar filas presentes en una tabla"** (*List rows present in a table*)
-- Ubicación: **OneDrive para la Empresa** · Biblioteca: **OneDrive**
-- Archivo: `/Anotador Gestión de Calidad.xlsx` · Tabla: **Tareas**
+- Ubicación: **Group - GO.Gestion de Calidad** (si no aparece en la lista: *Escribir un valor personalizado* → `https://acacloud.sharepoint.com/sites/GOGestiondeCalidad`)
+- Biblioteca de documentos: **Documentos** (o *Documentos compartidos*)
+- Archivo: carpeta 📁 → `General` → `Anotador Gestión de Calidad.xlsx` · Tabla: **Tareas**
 - Parámetros avanzados → **Formato de fecha y hora (DateTime Format)** = **ISO 8601**.
 
 **＋ Paso 3 – Operación de datos → "Filtrar matriz"** (*Filter array*)
