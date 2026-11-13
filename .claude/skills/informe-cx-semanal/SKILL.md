@@ -58,6 +58,15 @@ Sale un `.txt` por estación. Revisá cada uno y ajustá a mano los casos especi
 
 **Superposición con otra tarea:** la tarea programada de los lunes "Informes IM – análisis y borradores por estación" ya arma borradores por estación, con destinatarios, para las **14 estaciones propias** a partir de los informes individuales de `informes.im@ypf.com`. Por defecto, esta skill hace los mails por estación **solo para las 11 del NEA** (Posadas, Corrientes, Bernardo de Irigoyen, Clorinda, Eldorado, Formosa, Ingeniero Juárez, Roque Sáenz Peña, Itá Ibaté, Puerto Iguazú y Oberá) y la vista regional consolidada para las 25. Si el usuario pide las 25, hacé las 25.
 
+### Informe visual (HTML + PDF)
+
+```bash
+python3 $SK/informe_html.py datos/cx_$F/resumen.json "informes/cx_$F/Informe CX Region dd-mm.html" --red-pdf datos/cx_red_pdf.csv --reclasif datos/reclasif_$F.json --xlsx "$X"
+cd informes/cx_$F && NODE_PATH=$(npm root -g) node ../../$SK/html_a_pdf.js "Informe CX Region dd-mm.html" "Informe CX Region dd-mm.pdf"
+```
+
+Trae KPIs, ranking con objetivo y 30 días, alertas, canales región contra red, negativos por tópico, evolución de la red, tabla por estación y reclasificación. El PDF sale en A4 apaisado, 3 páginas. Antes de entregarlo mirá las páginas como imagen (`pdftoppm -r 50 -png`). Como tiene datos YPF-Privado, entregalo con `SendUserFile` y no lo publiques como Artifact salvo que el usuario lo pida.
+
 ### Cierre
 
 1. **Borrador de reclasificación** a `informes.im@ypf.com`, en HTML simple, con el resumen de lo que se pide. Avisale al usuario que tiene que adjuntar a mano el Excel de reclasificación, porque el conector no adjunta archivos.
