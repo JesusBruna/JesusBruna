@@ -1,0 +1,4 @@
+# Datos con comentarios y contactos de clientes (YPF-Privado): no subir
+datos/cx_*/
+informes/cx_*/
+datos/reclasif_*.json

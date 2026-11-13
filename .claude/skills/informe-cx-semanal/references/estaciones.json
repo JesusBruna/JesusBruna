@@ -1,0 +1,31 @@
+{
+ "region": "Jesús Bruna (Litoral / NEA)",
+ "objetivo_ycx": 80,
+ "estaciones": {
+  "887": "ACA CERES",
+  "888": "ACA RAFAELA",
+  "889": "ACA SUSANA",
+  "1080": "ACA GUALEGUAYCHU",
+  "1239": "ACA CURUZU CUATIA",
+  "1082": "ACA VENADO TUERTO",
+  "1089": "ACA RUFINO",
+  "3233": "ACA COLON (E.R)",
+  "1240": "ACA PASO DE LOS LIBRES",
+  "1006": "ACA TORTUGAS",
+  "1101": "ACA CONCORDIA",
+  "931": "ACA SANTA FE",
+  "1133": "ACA LA PAZ",
+  "1046": "ACA FIRMAT",
+  "1268": "ACA POSADAS",
+  "1333": "ACA CORRIENTES",
+  "1365": "ACA BERNARDO DE IRIGOYEN",
+  "1205": "ACA CLORINDA",
+  "1366": "ACA ELDORADO",
+  "1204": "ACA FORMOSA",
+  "1203": "ACA INGENIERO JUAREZ",
+  "1302": "ACA ROQUE SAENZ PEÑA",
+  "1334": "ACA ITA IBATE",
+  "1367": "ACA PUERTO IGUAZU",
+  "1267": "ACA OBERA"
+ }
+}
